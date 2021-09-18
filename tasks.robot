@@ -11,17 +11,17 @@ Library           RPA.HTTP
 Library           RPA.Tables
 Library           RPA.PDF
 Library           RPA.Archive
+Library           RPA.Robocorp.Vault
 
 
 *** Variables ***
-${URL}=             https://robotsparebinindustries.com/#/robot-order
 ${ORDERS_CSV_URL}=   https://robotsparebinindustries.com/orders.csv
-
 
 *** Keywords ***
 Open the robot order website
-    Open Available Browser  https://robotsparebinindustries.com/#/robot-order
-
+    
+    ${secret}=    Get Secret  secret
+    Open Available Browser  ${secret}[url]
 *** Keywords ***
 Get orders
      ${response}=    Download   ${ORDERS_CSV_URL}  target_file=${TEMPDIR}${/}tiedosto.csv  overwrite=true
@@ -65,7 +65,9 @@ Go to order another robot
 
 
 Create a ZIP file of the receipts
-    Archive Folder With Zip   ${TEMPDIR}      ${OUTPUT_DIR}${/}orders.zip   include=*.pdf
+    [Arguments]  ${zipFileName}
+   
+    Archive Folder With Zip   ${TEMPDIR}      ${OUTPUT_DIR}${/}${zipFileName}   include=*.pdf
 
 Fill the form
     [Arguments]  ${row}
@@ -74,9 +76,18 @@ Fill the form
     Input Text     //*[@placeholder="Enter the part number for the legs"]    text=${row}[Legs]
     Input Text     //*[@id="address"]    text=${row}[Address]
 
+Ask the zip file name
+    Add heading       Give ZIP file name
+    Add text input    ZipFileName    label=ZIP file name
+     
+    ${result}=    Run dialog
+    [Return]  ${result.ZipFileName} 
+
+
 *** Tasks ***
 Order robots from RobotSpareBin Industries Inc
-
+    ${zipFileName}=  Ask the zip file name
+   
     Open the robot order website
     ${orders}=    Get orders
     
@@ -89,8 +100,9 @@ Order robots from RobotSpareBin Industries Inc
         ${screenshot}=  Take a screenshot of the robot    ${row}[Order number]
         Embed the robot screenshot to the receipt PDF file    ${screenshot}    ${pdf}
         Go to order another robot
+    
     END
-    Create a ZIP file of the receipts
+    Create a ZIP file of the receipts  ${zipFileName}
 
 
 
